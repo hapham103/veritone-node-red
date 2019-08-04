@@ -1,0 +1,229 @@
+<script type="text/x-red" data-template-name="graphql-server">
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="fa fa-tag"></i> <span data-i18n="node-red:common.label.name"></span></label>
+        <input type="text" id="node-config-input-name" data-i18n="[placeholder]node-red:common.label.name">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-endpoint"><i class="fa fa-bookmark"></i> <span data-i18n="graphql.label.endpoint"></span></label>
+        <input type="text" id="node-config-input-endpoint">
+    </div>
+</script>
+
+<script type="text/x-red" data-template-name="aiware">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="node-red:common.label.name"></span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]node-red:common.label.name">
+    </div>
+    <div class="form-row" style="position: relative; margin-bottom: 0px;">
+        <label for="node-input-template"><i class="fa fa-file-code-o"></i> <span data-i18n="aiware.label.query"></span></label>
+        <input type="hidden" id="node-input-template" autofocus="autofocus">
+        <div style="position: absolute; right:0;display:inline-block; text-align: right; font-size: 0.8em;">
+            <span data-i18n="template.label.format"></span>:
+            <select id="node-input-format" style="width:110px; font-size: 10px !important;  height: 24px; padding:0;">
+                <option value="handlebars">mustache</option>
+                <option value="html">HTML</option>
+                <option value="json">JSON</option>
+                <option value="markdown">Markdown</option>
+                <option value="text">none</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-row node-text-editor-row">
+        <div style="height: 250px;" class="node-text-editor" id="node-input-template-editor" ></div>
+    </div>
+    <!-- <div class="form-row">
+        <label for="node-input-syntax"><i class="fa fa-code"></i> <span data-i18n="aiware.label.syntax"></span></label>
+        <select id="node-input-syntax" style="width:180px;">
+            <option value="mustache" data-i18n="aiware.label.mustache"><span data-i18n="template.label.mustache"></span></option>
+            <option value="plain" data-i18n="aiware.label.plain"><span data-i18n="template.label.plain"></span></option>
+        </select>
+    </div> -->
+</script>
+
+<script type="text/javascript">
+    function oneditprepare() {
+        $("#node-input-collection").change(function () {
+            if ($("#node-input-collection").val() === "") {
+                $("#node-warning").show();
+            } else {
+                $("#node-warning").hide();
+            }
+        });
+    }
+    RED.nodes.registerType('aiware', {
+        category: 'aiWARE',
+        color: '#b3e5fc',
+        defaults: {
+            name: {
+                value: "",
+                required: true
+            },
+            format: {
+                value: "handlebars",
+                required: false
+            },
+            syntax: {
+                value: "mustache",
+                required: false
+            },
+            template: {
+                value: "{\n  jobs(targetId: \{\{tdoId\}\}) {\n    records {\n      id status createdDateTime\n    }\n  }\n}",
+                required: true
+            }
+        },
+        inputs: 1,
+        outputs: 2,
+        outputLabels: ["result", "error"],
+        icon: "veritone-logo-transparent.png",
+        paletteLabel: "api",
+        align: "right",
+        label: function () {
+            return this.name || "aiWARE api";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditprepare: function () {
+            var that = this;
+            if (!this.fieldType) {
+                this.fieldType = 'msg';
+            }
+            if (!this.syntax) {
+                this.syntax = 'mustache';
+                $("#node-input-syntax").val(this.syntax);
+            }
+            $("#node-input-field").typedInput({
+                default: 'msg',
+                types: ['msg', 'flow', 'global'],
+                typeField: $("#node-input-fieldType")
+            });
+            this.editor = RED.editor.createEditor({
+                id: 'node-input-template-editor',
+                mode: 'ace/mode/html',
+                value: $("#node-input-template").val()
+            });
+            RED.library.create({
+                url: "functions", // where to get the data from
+                type: "function", // the type of object the library is for
+                editor: that.editor, // the field name the main text body goes to
+                fields: ['name', 'outputs']
+            });
+            this.editor.focus();
+            $("#node-input-format").change(function () {
+                var mod = "ace/mode/" + $("#node-input-format").val();
+                that.editor.getSession().setMode({
+                    path: mod,
+                    v: Date.now()
+                })
+            });
+        },
+        oneditsave: function () {
+            $("#node-input-template").val(this.editor.getValue())
+            delete this.editor;
+        },
+        oneditresize: function (size) {
+            var rows = $("#dialog-form>div:not(.node-text-editor-row)");
+            var height = $("#dialog-form").height();
+            for (var i = 0; i < rows.size(); i++) {
+                height -= $(rows[i]).outerHeight(true);
+            }
+            var editorRow = $("#dialog-form>div.node-text-editor-row");
+            height -= (parseInt(editorRow.css("marginTop")) + parseInt(editorRow.css("marginBottom")));
+            $(".node-text-editor").css("height", height + "px");
+            this.editor.resize();
+        }
+    });
+</script>
+
+<script type="text/x-red" data-help-name="aiware">
+    <p>Executes freeform graphql query and mutation statements with authentication already handled.</p>
+
+<h3>Inputs</h3>
+<dl class="message-properties">
+    <dt>
+        url <span class="property-type">string</span>
+    </dt>
+    <dd>
+        the intended aiWARE endpoint (optional)
+    </dd>
+     <dt>
+        orgToken <span class="property-type">string</span>
+    </dt>
+    <dd>
+        assign this variable to the organization API token performing an authorized API request on that organization (optional)
+    </dd>
+    <dt>
+        variables <span class="property-type">JSON</span>
+    </dt>
+    <dd>
+        assign this variable as a JSON object that contains the properties that map to the <code>$data</code> flags within the GraphQL statement. See <span style="font-style:500">Query Variables</span> section for more info.
+    </dd>
+</dl>
+
+<h3>Outputs</h3>
+     <ol class="node-ports">
+         <li>Standard output
+             <dl class="message-properties">
+                 <dt>payload <span class="property-type">json</span></dt>
+                 <dd>the standard output of the GraphQL call in JSON format.</dd>
+             </dl>
+         </li>
+         <li>Standard error
+             <dl class="message-properties">
+                 <dt>payload <span class="property-type">string</span></dt>
+                 <dd>This outputs any errors from the api node</dd>
+             </dl>
+         </li>
+     </ol>
+
+
+<h3>Details</h3>
+<p>If your GraphQL operation was correctly structured then the node will output data in Veritone’s GraphQL JSON format. Incorrect formatting or other errors will result in the node reporting a 400 Error.</p>
+
+<p>Each api node has a createJob graphQL statement that is used for starting an Engine process using Veritone’s GraphQL API populated by default, but can be deleted and replaced with the GraphQL statement intended for execution in that node.</p>
+
+<p>Here is an example of correct mustache syntax in the api node:
+<code>{{payload.myVariable}}</code></p>
+
+<h3>References</h3>
+<ul>
+    <li><a href="https://api.veritone.com/v3/graphiql">GraphiQL</a> interface for trying Veritone GraphQL APIs yourself </li>
+    <li><a href="https://docs.veritone.com/#/apis/"> Link to API Docs</a> - Documentation on using Veritone's API and understanding the Data Model, </li>
+</ul>
+
+<h4>GraphQL Sample</h4>
+<p>Here is a sample GraphQL query returning a list of your logged in Organization’s users:</p>
+<code>
+query{
+	users{
+		records{
+			id
+			name
+			firstName
+			lastName
+}
+}
+}
+</code>
+
+<p>This sample query will return the list of users in the Organization with the id, name, firstName, and lastName properties included for each user record. You can of course modify this query to remove any of these properties or add additional ones!</p>
+<h4>Query Variables</h4>
+<p>
+    Users can create a <code>msg.variables</code> JSON variable in a previous node (eg a <span style="font-style:italic">change</span> or <span style="font-style:italic">function</span> node) that maps the contained key-value pair to the <code>$data</code> flags within the GraphQL statement.
+    <br />
+    <br />
+    Here is an example:
+</p>
+<code>
+    mutation updateWatchlist ($id: ID!, $details: JSONData!){
+    updateWatchlist(input:{
+    id: $id
+    details: $details
+    }){
+    id
+    details
+    }
+}
+</code>
+
+</script>
