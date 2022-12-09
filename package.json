@@ -7,7 +7,7 @@
     "@tensorflow/tfjs": "^1.2.2",
     "@tensorflow/tfjs-node": "^1.2.1",
     "axios": "^0.18.1",
-    "body-parser": "1.18.3",
+    "body-parser": "1.20.1",
     "canvas": "^2.5.0",
     "eslint-plugin-lodash": "^3.1.0",
     "is-utf8": "^0.2.1",
